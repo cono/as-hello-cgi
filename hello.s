@@ -22,16 +22,20 @@ skip_argument:
 # Skipping 0 byte between argument and environment variables
 	popq	%rsi
 
+# Cycling through the environment lines e.g.:
+# HOME=/home/cono
 env_loop:
 	popq	%rsi
 	cmpq	$0, %rsi
 	je	print_unknown
 
+# Checking if this variable is a QUERY_STRING
 	movq	$query_string, %rdi
 	movq	$qlen, %rcx
 	repe cmpsb
 	jne	env_loop
 
+# If its a QUERY_STRING trying to find our "name=" parameter
 check_param:
 	movq	$parameter, %rdi
 	movq	$parameter_len, %rcx
@@ -40,6 +44,7 @@ check_param:
 
 	xorq	%rax, %rax
 
+# If first parameter is not a name, looking for "&" to match next parameter
 amp_search:
 	lodsb
 	cmpb	$0, %al
@@ -48,9 +53,11 @@ amp_search:
 	je	check_param
 	jmp	amp_search
 
+# Looks like we found our parameter, lets start reading the name
 scan_name:
 	movq	%rsi, %rdx
 
+# Cycling through the line before we reach end of the string or another "&"
 loop_name:
 	lodsb
 	cmpb	$0, %al
@@ -58,6 +65,7 @@ loop_name:
 	cmpb	$38, %al
 	jne	loop_name
 
+# Name found, lets print it
 print_name:
 	movq	$1, %rax
 	movq	$1, %rdi
@@ -67,6 +75,7 @@ print_name:
 	syscall
 	jmp	exit
 
+# In case we haven't found name, let's print "Unknown"
 print_unknown:
 	movq	$1, %rax
 	movq	$1, %rdi
@@ -75,6 +84,7 @@ print_unknown:
 	decq	%rdx
 	syscall
 
+# Priniting exclamation mark and making exit(0)
 exit:
 	movq	$1, %rax
 	movq	$1, %rdi
